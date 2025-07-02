@@ -34,6 +34,15 @@
             .transition-custom {
                 transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             }
+            .slider-thumb {
+                appearance: none;
+                width: 24px;
+                height: 24px;
+                border-radius: 50%;
+                background: #165DFF;
+                cursor: pointer;
+                box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+            }
         }
     </style>
 </head>
@@ -97,7 +106,7 @@
                                     <input type="number" id="rate-above-5" name="rate-above-5" value="2.6" 
                                         class="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary/50 focus:border-primary transition-custom"
                                         min="0" step="0.01" required>
-                                </div>
+                            </div>
                             </div>
                         </div>
 
@@ -146,6 +155,38 @@
                             </div>
                         </div>
 
+                        <div class="pt-4 border-t border-gray-200">
+                            <h3 class="text-lg font-semibold mb-4">最佳方案权重设置</h3>
+                            
+                            <div class="space-y-6">
+                                <div>
+                                    <div class="flex justify-between items-center mb-2">
+                                        <label for="payment-weight" class="text-sm font-medium text-gray-700">月供压力权重</label>
+                                        <span id="payment-weight-value" class="text-sm font-medium text-primary">50%</span>
+                                    </div>
+                                    <input type="range" id="payment-weight" name="payment-weight" min="0" max="100" value="50" 
+                                        class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary slider-thumb">
+                                    <div class="flex justify-between text-xs text-gray-500 mt-1">
+                                        <span>利息优先</span>
+                                        <span>月供优先</span>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <div class="flex justify-between items-center mb-2">
+                                        <label for="interest-weight" class="text-sm font-medium text-gray-700">利息比例权重</label>
+                                        <span id="interest-weight-value" class="text-sm font-medium text-primary">50%</span>
+                                    </div>
+                                    <input type="range" id="interest-weight" name="interest-weight" min="0" max="100" value="50" 
+                                        class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary slider-thumb">
+                                    <div class="flex justify-between text-xs text-gray-500 mt-1">
+                                        <span>月供优先</span>
+                                        <span>利息优先</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <button type="submit" class="w-full bg-primary hover:bg-primary/90 text-white font-medium py-3 px-4 rounded-lg transition-custom flex items-center justify-center">
                             <i class="fa fa-calculator mr-2"></i>
                             计算结果
@@ -186,15 +227,27 @@
                                 </div>
                             </div>
 
+                            <div class="mb-6 bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                                <div class="flex items-start">
+                                    <i class="fa fa-info-circle text-yellow-500 mt-1 mr-3"></i>
+                                    <div>
+                                        <p class="text-sm font-medium text-yellow-800">最优方案说明</p>
+                                        <p class="text-sm text-yellow-700 mt-1">基于当前权重设置：月供压力权重 <span id="current-payment-weight" class="font-medium">50%</span>，利息比例权重 <span id="current-interest-weight" class="font-medium">50%</span></p>
+                                    </div>
+                                </div>
+                            </div>
+
                             <table class="min-w-full divide-y divide-gray-200">
                                 <thead class="bg-gray-50">
                                     <tr>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">贷款年限</th>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">首月还款额</th>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">总利息</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">利息占比</th>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">提前还款时已还利息</th>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">提前还款剩余本金</th>
                                         <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">提前还款总花费</th>
+                                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">综合评分</th>
                                     </tr>
                                 </thead>
                                 <tbody id="result-body" class="bg-white divide-y divide-gray-200">
@@ -306,15 +359,23 @@
                     }
                 }
                 
+                // 计算利息占本金比例
+                const interestRatio = totalInterest / principal;
+                
+                // 计算月供压力（取首月还款额，等额本金方式下首月最高）
+                const paymentStress = firstMonthPayment;
+                
                 const totalCost = principal + interestPaid;
                 
                 results.push({
                     years,
                     firstMonthPayment,
                     totalInterest,
+                    interestRatio,
                     interestPaid,
                     remainingPrincipal,
-                    totalCost
+                    totalCost,
+                    paymentStress
                 });
             }
             
@@ -331,6 +392,14 @@
             });
         }
 
+        // 格式化百分比
+        function formatPercentage(value) {
+            return (value * 100).toLocaleString('zh-CN', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }) + '%';
+        }
+
         // 格式化数字
         function formatNumber(value) {
             return value.toLocaleString('zh-CN', {
@@ -339,29 +408,75 @@
             });
         }
 
+        // 计算最优方案
+        function findOptimalResult(results, paymentWeight, interestWeight) {
+            // 归一化处理
+            const maxPayment = Math.max(...results.map(r => r.paymentStress));
+            const maxInterestRatio = Math.max(...results.map(r => r.interestRatio));
+            
+            // 计算每个方案的综合评分
+            return results.reduce((best, current) => {
+                // 月供评分：越低越好（归一化后用1减）
+                const paymentScore = 1 - (current.paymentStress / maxPayment);
+                
+                // 利息评分：越低越好（归一化后用1减）
+                const interestScore = 1 - (current.interestRatio / maxInterestRatio);
+                
+                // 综合评分
+                const totalScore = (paymentScore * (paymentWeight / 100)) + (interestScore * (interestWeight / 100));
+                
+                if (!best || totalScore > best.totalScore) {
+                    return { ...current, totalScore };
+                }
+                
+                return best;
+            }, null);
+        }
+
         // 显示计算结果
-        function displayResults(results, paymentType) {
+        function displayResults(results, paymentType, paymentWeight, interestWeight) {
             const resultBody = document.getElementById('result-body');
             const optimalYears = document.getElementById('optimal-years');
             const minInterest = document.getElementById('min-interest');
             const paymentStress = document.getElementById('payment-stress');
+            const currentPaymentWeight = document.getElementById('current-payment-weight');
+            const currentInterestWeight = document.getElementById('current-interest-weight');
             
             resultBody.innerHTML = '';
             
-            // 找出最优方案（总花费最低）
-            const optimalResult = results.reduce((min, result) => 
-                result.totalCost < min.totalCost ? result : min, results[0]);
+            // 更新当前权重显示
+            currentPaymentWeight.textContent = `${paymentWeight}%`;
+            currentInterestWeight.textContent = `${interestWeight}%`;
             
-            // 找出月供压力最小的方案（首月还款额最低）
-            const minStressResult = results.reduce((min, result) => 
-                result.firstMonthPayment < min.firstMonthPayment ? result : min, results[0]);
+            // 找出最优方案
+            const optimalResult = findOptimalResult(results, paymentWeight, interestWeight);
+            
+            // 找出最低总利息和最小月供压力的方案
+            const minInterestResult = results.reduce((min, result) => 
+                result.totalInterest < min.totalInterest ? result : min, results[0]);
+            
+            const minPaymentResult = results.reduce((min, result) => 
+                result.paymentStress < min.paymentStress ? result : min, results[0]);
             
             optimalYears.textContent = `${optimalResult.years}年`;
-            minInterest.textContent = formatCurrency(optimalResult.totalInterest);
-            paymentStress.textContent = formatCurrency(minStressResult.firstMonthPayment);
+            minInterest.textContent = formatCurrency(minInterestResult.totalInterest);
+            paymentStress.textContent = formatCurrency(minPaymentResult.paymentStress);
+            
+            // 归一化处理，用于评分显示
+            const maxPayment = Math.max(...results.map(r => r.paymentStress));
+            const maxInterestRatio = Math.max(...results.map(r => r.interestRatio));
             
             // 填充表格
             results.forEach(result => {
+                // 计算月供评分
+                const paymentScore = 1 - (result.paymentStress / maxPayment);
+                
+                // 计算利息评分
+                const interestScore = 1 - (result.interestRatio / maxInterestRatio);
+                
+                // 计算综合评分
+                const totalScore = (paymentScore * (paymentWeight / 100)) + (interestScore * (interestWeight / 100));
+                
                 const row = document.createElement('tr');
                 row.className = result.years === optimalResult.years ? 'bg-green-50' : 'hover:bg-gray-50';
                 
@@ -377,6 +492,9 @@
                         <div class="text-sm text-gray-900">${formatCurrency(result.totalInterest)}</div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm text-gray-900">${formatPercentage(result.interestRatio)}</div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
                         <div class="text-sm text-gray-900">${formatCurrency(result.interestPaid)}</div>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
@@ -385,6 +503,11 @@
                     <td class="px-6 py-4 whitespace-nowrap">
                         <div class="text-sm font-medium ${result.years === optimalResult.years ? 'text-green-800' : 'text-gray-900'}">
                             ${formatCurrency(result.totalCost)}
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm font-medium ${result.years === optimalResult.years ? 'text-green-800' : 'text-gray-900'}">
+                            ${Math.round(totalScore * 100)}分
                         </div>
                     </td>
                 `;
@@ -413,7 +536,7 @@
             const years = results.map(r => r.years);
             const totalInterests = results.map(r => r.totalInterest);
             const totalCosts = results.map(r => r.totalCost);
-            const firstPayments = results.map(r => r.firstMonthPayment);
+            const firstPayments = results.map(r => r.paymentStress);
             
             window.mortgageChart = new Chart(ctx, {
                 type: 'line',
@@ -513,6 +636,10 @@
             const yearsInterval = document.getElementById('years-interval').value;
             const prepayYears = parseInt(document.getElementById('prepay-years').value);
             
+            // 获取权重设置
+            const paymentWeight = parseInt(document.getElementById('payment-weight').value);
+            const interestWeight = parseInt(document.getElementById('interest-weight').value);
+            
             // 确保提前还款时间不超过最大贷款期限
             const adjustedPrepayYears = Math.min(prepayYears, maxYears);
             
@@ -523,7 +650,7 @@
                 );
                 
                 // 显示结果
-                displayResults(results, paymentType);
+                displayResults(results, paymentType, paymentWeight, interestWeight);
                 
                 // 隐藏加载状态
                 document.getElementById('loading-indicator').classList.add('hidden');
@@ -531,6 +658,19 @@
                 // 平滑滚动到结果区域
                 document.getElementById('result-container').scrollIntoView({ behavior: 'smooth' });
             }, 500); // 模拟计算延迟
+        });
+
+        // 更新滑动条显示值
+        document.getElementById('payment-weight').addEventListener('input', function() {
+            document.getElementById('payment-weight-value').textContent = `${this.value}%`;
+            document.getElementById('interest-weight').value = 100 - this.value;
+            document.getElementById('interest-weight-value').textContent = `${100 - this.value}%`;
+        });
+        
+        document.getElementById('interest-weight').addEventListener('input', function() {
+            document.getElementById('interest-weight-value').textContent = `${this.value}%`;
+            document.getElementById('payment-weight').value = 100 - this.value;
+            document.getElementById('payment-weight-value').textContent = `${100 - this.value}%`;
         });
 
         // 初始显示无结果状态
